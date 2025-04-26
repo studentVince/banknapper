@@ -10,6 +10,9 @@ import { Icon } from "react-native-elements";
 import ChangePassword from "../screens/ChangePassword";
 import DeleteScreen from "../screens/DeleteScreen";
 import PrivacyScreen from "../screens/PrivacyScreen";
+import TransactionScreen from "../screens/TransactionScreen"; // Import TransactionScreen
+import InboxScreen from "../screens/InboxScreen"; // Import InboxScreen
+
 
 export type RootStackParamlist = {
   Auth: undefined;
@@ -19,6 +22,9 @@ export type RootStackParamlist = {
   Profile: { userId: string };
   ChangePassword: undefined;
   DeleteScreen: undefined;
+  Transactions: { userId: string };
+  Inbox: { userId: string }; // Add Inbox screen to the stack navigator
+  PrivacyScreen: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamlist>();
@@ -35,6 +41,10 @@ function TabNavigator({ user }: { user: any }) {
             iconName = "home";
           } else if (route.name === "Profile") {
             iconName = "person";
+          } else if (route.name === "Transactions") {
+            iconName = "receipt"; // Icon for Transactions
+          } else if (route.name === "Inbox") {
+            iconName = "mail"; // Icon for Inbox
           }
 
           return <Icon name={iconName} type="material" color={color} size={size} />;
@@ -52,6 +62,22 @@ function TabNavigator({ user }: { user: any }) {
         title: "Home",
       }}
     />
+      <Tab.Screen
+        name="Transactions"
+        component={TransactionScreen}
+        initialParams={{ userId: user?.id }}
+        options={{
+          title: "Transactions",
+        }}
+      />
+      <Tab.Screen
+        name="Inbox"
+        component={InboxScreen}
+        initialParams={{ userId: user?.id }}
+        options={{
+          title: "Inbox",
+        }}
+      />
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
