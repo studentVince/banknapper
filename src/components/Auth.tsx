@@ -19,7 +19,7 @@ export default function Auth({ navigation }: { navigation: any }) {
       Alert.alert('Error', error.message);
     } else {
       Alert.alert('Success', 'You are now logged in!');
-      navigation.navigate('Home'); // Navigate to the HomeScreen
+      navigation.navigate('Main'); // Navigate to the HomeScreen
     }
   
     setLoading(false);

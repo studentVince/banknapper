@@ -14,7 +14,8 @@ import PrivacyScreen from "../screens/PrivacyScreen";
 export type RootStackParamlist = {
   Auth: undefined;
   SignUp: undefined;
-  Home: undefined; // For the bottom tab navigator
+  Main: undefined; // For the Tab Navigator
+  TabHome: { userId: string }; // Renamed Home in Tab.Navigator
   Profile: { userId: string };
   ChangePassword: undefined;
   DeleteScreen: undefined;
@@ -30,7 +31,7 @@ function TabNavigator({ user }: { user: any }) {
         tabBarIcon: ({ color, size }) => {
           let iconName;
 
-          if (route.name === "Home") {
+          if (route.name === "TabHome") {
             iconName = "home";
           } else if (route.name === "Profile") {
             iconName = "person";
@@ -44,13 +45,13 @@ function TabNavigator({ user }: { user: any }) {
       })}
     >
       <Tab.Screen
-        name="Home"
-        component={HomeScreen}
-        options={{
-          title: "Home",
-          headerLeft: () => null, // Remove the back button
-        }}
-      />
+      name="TabHome"
+      component={HomeScreen}
+      initialParams={{ userId: user?.id }} // Pass userId as initialParams
+      options={{
+        title: "Home",
+      }}
+    />
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
@@ -76,9 +77,9 @@ const AppNavigation: React.FC<{ user: any }> = ({ user }) => {
           component={SignUpScreen}
           options={{ title: "Sign Up" }}
         />
-        {/* Always include the Home route */}
+        {/* Main Tab Navigator */}
         <Stack.Screen
-          name="Home"
+          name="Main"
           children={() => <TabNavigator user={user} />}
           options={{ headerShown: false }}
         />

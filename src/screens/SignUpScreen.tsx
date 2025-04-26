@@ -25,8 +25,8 @@ export default function SignUpScreen({ navigation }: { navigation: any }) {
       // Check if the email already exists in the `auth.users` table
       const { data: existingUser, error: checkError } = await supabase
         .from("Users")
-        .select("email")
-        .eq("email", email)
+        .select("email, username")
+        .or(`email.eq.${email},username.eq.${username}`)
         .single();
   
       if (checkError && checkError.code !== "PGRST116") {
@@ -37,8 +37,11 @@ export default function SignUpScreen({ navigation }: { navigation: any }) {
       }
   
       if (existingUser) {
-        // If the user already exists, show an alert
-        Alert.alert("Error", "A user with this email already exists.");
+        if (existingUser.email === email) {
+          Alert.alert("Error", "A user with this email already exists.");
+        } else if (existingUser.username === username) {
+          Alert.alert("Error", "A user with this username already exists.");
+        }
         setLoading(false);
         return;
       }
@@ -56,8 +59,14 @@ export default function SignUpScreen({ navigation }: { navigation: any }) {
 
       const { data: subscription } = supabase.auth.onAuthStateChange(async (event, session) => {
         if (event === "SIGNED_IN" && session?.user?.email_confirmed_at) {
-          const userId = session.user.id; // Get the user's ID from the session
+          const userId = session?.user?.id; // Safely access session.user.id
   
+          if (!userId) {
+            Alert.alert("Error", "Failed to retrieve user ID.");
+            setLoading(false);
+            return;
+          }
+
       // Insert into the `users` table
       const { error: userError } = await supabase
         .from("Users")
@@ -89,6 +98,8 @@ export default function SignUpScreen({ navigation }: { navigation: any }) {
             },
           ]
         );
+
+        subscription?.subscription?.unsubscribe();
       } else {
         Alert.alert(
           "Check your email",
