@@ -66,6 +66,27 @@ const HomeScreen: React.FC<Props> = ({ route, navigation }) => {
           {loading ? 'Loading...' : `Balance: $${balance?.toFixed(2)}`}
         </Text>
       </View>
+
+      <View style={styles.buttonRow}>
+        <Button
+          title="Transfer"
+          onPress={() => navigation.navigate('TransferScreen', { userId })}
+          buttonStyle={styles.squareButton}
+          titleStyle={styles.buttonText}
+        />
+        <Button
+          title="Send"
+          onPress={() => navigation.navigate('SendScreen', { userId })}
+          buttonStyle={styles.squareButton}
+          titleStyle={styles.buttonText}
+        />
+        <Button
+          title="Pay Bills"
+          onPress={() => navigation.navigate('BillScreen', { userId })}
+          buttonStyle={styles.squareButton}
+          titleStyle={styles.buttonText}
+        />
+      </View>
     </View>
   );
 };
@@ -75,11 +96,6 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 10,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    marginBottom: 20,
-  },
   balanceContainer: {
     alignItems: 'center',
     marginTop: 20,
@@ -88,6 +104,24 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#333',
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 30,
+    paddingHorizontal: 10,
+  },
+  squareButton: {
+    width: 100, // Set a fixed width for square buttons
+    height: 100, // Set a fixed height for square buttons
+    backgroundColor: '#007bff',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  buttonText: {
+    fontSize: 14,
+    textAlign: 'center',
+    color: '#fff',
   },
 });
 
