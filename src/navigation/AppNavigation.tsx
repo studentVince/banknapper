@@ -11,8 +11,9 @@ import ChangePassword from "../screens/ChangePassword";
 import DeleteScreen from "../screens/DeleteScreen";
 import PrivacyScreen from "../screens/PrivacyScreen";
 import TransactionScreen from "../screens/TransactionScreen"; // Import TransactionScreen
-import InboxScreen from "../screens/InboxScreen"; // Import InboxScreen
-
+import TransferScreen from "../screens/TransferScreen"; // Import TransferScreen
+import SendScreen from "../screens/SendScreen";
+import BillScreen from "../screens/BillScreen";
 
 export type RootStackParamlist = {
   Auth: undefined;
@@ -43,8 +44,6 @@ function TabNavigator({ user }: { user: any }) {
             iconName = "person";
           } else if (route.name === "Transactions") {
             iconName = "receipt"; // Icon for Transactions
-          } else if (route.name === "Inbox") {
-            iconName = "mail"; // Icon for Inbox
           }
 
           return <Icon name={iconName} type="material" color={color} size={size} />;
@@ -68,14 +67,6 @@ function TabNavigator({ user }: { user: any }) {
         initialParams={{ userId: user?.id }}
         options={{
           title: "Transactions",
-        }}
-      />
-      <Tab.Screen
-        name="Inbox"
-        component={InboxScreen}
-        initialParams={{ userId: user?.id }}
-        options={{
-          title: "Inbox",
         }}
       />
       <Tab.Screen
@@ -128,6 +119,21 @@ const AppNavigation: React.FC<{ user: any }> = ({ user }) => {
           name="DeleteScreen"
           component={DeleteScreen}
           options={{ title: "Delete your Account" }}
+        />
+        <Stack.Screen
+          name="TransferScreen"
+          component={TransferScreen}
+          options={{ title: "Transfer" }}
+        />
+        <Stack.Screen
+          name="SendScreen"
+          component={SendScreen}
+          options={{ title: "Send Money" }}
+        />
+        <Stack.Screen
+          name="BillScreen"
+          component={BillScreen}
+          options={{ title: "Pay Bills" }}
         />
       </Stack.Navigator>
     </NavigationContainer>
