@@ -7,7 +7,6 @@ import {
 } from 'react-native';
 import { Button } from 'react-native-elements';
 import { supabase } from '../config/supabase';
-import { User } from '@supabase/supabase-js';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamlist } from '../navigation/AppNavigation';
 
@@ -57,14 +56,18 @@ const HomeScreen: React.FC<Props> = ({ route, navigation }) => {
     fetchBalance();
   }, [userId, navigation]);
 
-
   return (
     <View style={styles.container}>
-
       <View style={styles.balanceContainer}>
         <Text style={styles.balanceText}>
           {loading ? 'Loading...' : `Balance: $${balance?.toFixed(2)}`}
         </Text>
+        <Button
+          title="Cash In"
+          onPress={() => navigation.navigate('CashIn', { userId })}
+          buttonStyle={styles.cashInButton}
+          titleStyle={styles.cashInButtonText}
+        />
       </View>
 
       <View style={styles.buttonRow}>
@@ -97,13 +100,26 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   balanceContainer: {
+    flexDirection: 'row', // Align balance and button horizontally
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginTop: 20,
+    paddingHorizontal: 10,
   },
   balanceText: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#333',
+  },
+  cashInButton: {
+    backgroundColor: '#28a745', // Green color for the Cash In button
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 5,
+  },
+  cashInButtonText: {
+    fontSize: 14,
+    color: '#fff',
   },
   buttonRow: {
     flexDirection: 'row',

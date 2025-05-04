@@ -1,25 +1,54 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Alert } from 'react-native';
-import { Input, Button } from 'react-native-elements';
+import React, { useState, useEffect } from 'react';
+import { View, Text, FlatList, StyleSheet, Alert, TouchableOpacity } from 'react-native';
+import { Button, Icon } from 'react-native-elements';
 import { supabase } from '../config/supabase';
 
 const BillScreen = ({ route }: { route: any }) => {
-  const { from_account_id } = route.params; // Get the sender's account ID from route params
-  const [billType, setBillType] = useState('');
-  const [amount, setAmount] = useState('');
+  const { from_account_id, userId } = route.params; // Get the sender's account ID and userId from route params
+  interface Bill {
+    id: number;
+    bill_type: string;
+    amount: number;
+    due_date: string;
+    is_paid: boolean;
+    paid_at?: string;
+  }
+
+  const [selectedBill, setSelectedBill] = useState<Bill | null>(null); // Store the selected bill
   const [loading, setLoading] = useState(false);
+  const [bills, setBills] = useState<Bill[]>([]);
+
+  useEffect(() => {
+    const fetchBills = async () => {
+      try {
+        const { data: unpaidBills, error } = await supabase
+          .from('bills')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('is_paid', false) // Fetch only unpaid bills
+          .order('due_date', { ascending: true });
+
+        if (error) {
+          console.error('Error fetching bills:', error);
+          return;
+        }
+
+        setBills(unpaidBills || []);
+      } catch (error) {
+        console.error('Unexpected error:', error);
+      }
+    };
+
+    fetchBills();
+  }, [userId]);
 
   const handlePayBill = async () => {
-    if (!billType || !amount) {
-      Alert.alert('Error', 'Please select a bill type and enter an amount.');
+    if (!selectedBill) {
+      Alert.alert('Error', 'Please select a bill to pay.');
       return;
     }
 
-    const amountToPay = parseFloat(amount);
-    if (isNaN(amountToPay) || amountToPay <= 0) {
-      Alert.alert('Error', 'Please enter a valid amount.');
-      return;
-    }
+    const amountToPay = selectedBill.amount;
 
     setLoading(true);
 
@@ -61,7 +90,7 @@ const BillScreen = ({ route }: { route: any }) => {
         .insert([
           {
             from_account_id,
-            to_bill_type: billType,
+            to_bill_type: selectedBill.bill_type,
             amount: amountToPay,
             transaction_type: 'Bill Payment',
           },
@@ -73,7 +102,43 @@ const BillScreen = ({ route }: { route: any }) => {
         return;
       }
 
-      Alert.alert('Success', `Your ${billType} bill has been paid successfully!`);
+      // Mark the bill as paid in the Bills table
+      const { error: updateBillError } = await supabase
+        .from('Bills')
+        .update({ is_paid: true,
+          paid_at: new Date().toISOString(),
+         })
+        .eq('id', selectedBill.id);
+
+      if (updateBillError) {
+        Alert.alert('Error', 'Failed to update the bill status.');
+        setLoading(false);
+        return;
+      }
+
+      const { error: notificationError } = await supabase
+      .from('Notifications')
+      .insert([
+        {
+          user_id: userId,
+          message: `You have successfully paid your ${selectedBill.bill_type} bill of $${amountToPay.toFixed(
+            2
+          )} on ${new Date().toLocaleString()}.`,
+          created_at: new Date().toISOString(),
+          type: 'bill_payment',
+          is_read: false,
+        },
+      ]);
+
+    if (notificationError) {
+      Alert.alert('Error', 'Failed to record the notification.');
+      setLoading(false);
+      return;
+    }
+
+      Alert.alert('Success', `Your ${selectedBill.bill_type} bill has been paid successfully!`);
+      setSelectedBill(null); // Reset the selected bill
+      setBills((prevBills) => prevBills.filter((bill) => bill.id !== selectedBill.id)); // Remove the paid bill from the list
     } catch (error) {
       console.error('Unexpected error:', error);
       Alert.alert('Error', 'An unexpected error occurred.');
@@ -82,26 +147,45 @@ const BillScreen = ({ route }: { route: any }) => {
     }
   };
 
+  const renderBillItem = ({ item }: { item: any }) => (
+    <TouchableOpacity
+      style={[
+        styles.billItem,
+        selectedBill?.id === item.id ? styles.selectedBillItem : null,
+      ]}
+      onPress={() => setSelectedBill(item)}
+    >
+      <Icon
+        name={item.bill_type === 'Electricity' ? 'bolt' : 'water'}
+        type="font-awesome-5"
+        color={item.bill_type === 'Electricity' ? '#f39c12' : '#3498db'}
+        size={24}
+      />
+      <View style={styles.billDetails}>
+        <Text style={styles.billType}>{item.bill_type}</Text>
+        <Text style={styles.billAmount}>Amount: ${item.amount.toFixed(2)}</Text>
+        <Text style={styles.billDueDate}>Due Date: {item.due_date}</Text>
+        {item.is_paid && item.paid_at && (
+          <Text style={styles.billPaidAt}>Paid At: {new Date(item.paid_at).toLocaleString()}</Text>
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Pay Bills</Text>
-      <Input
-        label="Bill Type"
-        placeholder="Enter 'Water' or 'Electricity'"
-        value={billType}
-        onChangeText={setBillType}
-      />
-      <Input
-        label="Amount"
-        placeholder="Enter amount to pay"
-        value={amount}
-        onChangeText={setAmount}
-        keyboardType="numeric"
+      <FlatList
+        data={bills}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={renderBillItem}
+        ListEmptyComponent={<Text style={styles.noBills}>No unpaid bills available.</Text>}
       />
       <Button
-        title="Pay Bill"
+        title={selectedBill ? `Pay ${selectedBill.bill_type} Bill` : 'Select a Bill to Pay'}
         onPress={handlePayBill}
         loading={loading}
+        disabled={!selectedBill}
         buttonStyle={styles.button}
       />
     </View>
@@ -112,7 +196,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    justifyContent: 'center',
+    backgroundColor: '#fff',
   },
   title: {
     fontSize: 24,
@@ -120,6 +204,42 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     textAlign: 'center',
   },
+  billItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+  },
+  selectedBillItem: {
+    backgroundColor: '#e6f7ff',
+  },
+  billDetails: {
+    marginLeft: 15,
+  },
+  billType: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  billAmount: {
+    fontSize: 16,
+    color: '#333',
+  },
+  billDueDate: {
+    fontSize: 14,
+    color: '#888',
+  },
+  noBills: {
+    fontSize: 16,
+    color: '#888',
+    textAlign: 'center',
+    marginTop: 20,
+  },
+  billPaidAt: {
+  fontSize: 14,
+  color: '#28a745', // Green color for paid bills
+  marginTop: 5,
+},
   button: {
     backgroundColor: '#007bff',
     marginTop: 20,

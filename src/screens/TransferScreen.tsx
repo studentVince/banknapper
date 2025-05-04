@@ -28,7 +28,7 @@ const TransferScreen = ({ route, navigation }: { route: any; navigation: any }) 
       // Fetch sender's account balance
       const { data: senderAccount, error: senderError } = await supabase
         .from('Accounts')
-        .select('balance')
+        .select('balance, account_id')
         .eq('account_id', from_account_id)
         .single();
 
@@ -57,20 +57,68 @@ const TransferScreen = ({ route, navigation }: { route: any; navigation: any }) 
       }
 
       // Record the transaction in the Transactions table
-      const { error: transactionError } = await supabase
-        .from('Transactions')
+      const { data: existingTransfer, error: fetchError } = await supabase
+        .from('Banks')
+        .select('*')
+        .eq('bank_name', bankName)
+        .eq('bank_account_number', bankAccountNumber)
+        .single();
+
+      if (fetchError) {
+        Alert.alert('Error', 'Failed to check existing bank details.');
+        setLoading(false);
+        return;
+      }
+
+      if (existingTransfer) {
+        // Update the existing transfer record
+        const { error: updateError } = await supabase
+          .from('Banks')
+          .update({ amount: existingTransfer.amount + amountToSend })
+          .eq('id', existingTransfer.id);
+
+        if (updateError) {
+          Alert.alert('Error', 'Failed to update the transfer record.');
+          setLoading(false);
+          return;
+        }
+      } else {
+        // Insert a new transfer record
+        const { error: insertError } = await supabase
+          .from('Banks')
+          .insert([
+            {
+              from_account_id: senderAccount.account_id,
+              bank_name: bankName,
+              bank_account_number: bankAccountNumber,
+              amount: amountToSend,
+              created_at: new Date().toISOString(),
+            },
+          ]);
+
+        if (insertError) {
+          Alert.alert('Error', 'Failed to record the transaction.');
+          setLoading(false);
+          return;
+        }
+      }
+
+      const currentDate = new Date().toLocaleString();
+
+      const { error: notificationError } = await supabase
+        .from('Notifications')
         .insert([
           {
-            from_account_id,
-            to_bank_name: bankName,
-            to_bank_account_number: bankAccountNumber,
-            amount: amountToSend,
-            transaction_type: 'Bank Transfer',
+            user_id: userId,
+            message: `You have successfully transferred $${amountToSend.toFixed(2)} to ${bankName} (Account: ${bankAccountNumber}) on ${currentDate}.`,
+            created_at: new Date().toISOString(),
+            type: 'bank_transfer',
+            is_read: false,
           },
         ]);
 
-      if (transactionError) {
-        Alert.alert('Error', 'Failed to record the transaction.');
+      if (notificationError) {
+        Alert.alert('Error', 'Failed to record the notification.');
         setLoading(false);
         return;
       }

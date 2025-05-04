@@ -46,7 +46,7 @@ const SendScreen = ({ route, navigation }: { route: any; navigation: any }) => {
       // Fetch recipient's account using the username
       const { data: recipientAccount, error: recipientError } = await supabase
         .from('Accounts')
-        .select('account_id, balance')
+        .select('account_id, balance, user_id')
         .eq('user_id', (await supabase.from('Users').select('user_id').eq('username', recipientUsername).single()).data?.user_id)
         .single();
 
@@ -87,7 +87,8 @@ const SendScreen = ({ route, navigation }: { route: any; navigation: any }) => {
             from_account_id,
             to_account_id: recipientAccount.account_id,
             amount: amountToSend,
-            transaction_type: 'Send Money',
+            transaction_type: 'send_money',
+            created_at: new Date().toISOString(),
           },
         ]);
 
@@ -96,6 +97,44 @@ const SendScreen = ({ route, navigation }: { route: any; navigation: any }) => {
         setLoading(false);
         return;
       }
+
+      const currentDate = new Date().toLocaleString();
+
+      const { error: senderNotificationError } = await supabase
+      .from('Notifications')
+      .insert([
+        {
+          user_id: userId,
+          message: `You have successfully sent $${amountToSend.toFixed(2)} to ${recipientUsername} on ${currentDate}.`,
+          created_at: new Date().toISOString(),
+          type: 'send_money',
+          is_read: false,
+        },
+      ]);
+
+    if (senderNotificationError) {
+      Alert.alert('Error', 'Failed to record the sender notification.');
+      setLoading(false);
+      return;
+    }
+
+    const { error: recipientNotificationError } = await supabase
+      .from('Notifications')
+      .insert([
+        {
+          user_id: recipientAccount.user_id,
+          message: `You have received $${amountToSend.toFixed(2)} from ${userId}.`,
+          created_at: new Date().toISOString(),
+          type: 'receive_money',
+          is_read: false,
+        },
+      ]);
+
+    if (recipientNotificationError) {
+      Alert.alert('Error', 'Failed to record the recipient notification.');
+      setLoading(false);
+      return;
+    }
 
       Alert.alert('Success', 'Money sent successfully!', [
         { text: 'OK', onPress: () => navigation.goBack() },

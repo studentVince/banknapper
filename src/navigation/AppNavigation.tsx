@@ -14,17 +14,20 @@ import TransactionScreen from "../screens/TransactionScreen"; // Import Transact
 import TransferScreen from "../screens/TransferScreen"; // Import TransferScreen
 import SendScreen from "../screens/SendScreen";
 import BillScreen from "../screens/BillScreen";
+import CashIn from "../screens/CashIn";
 
 export type RootStackParamlist = {
   Auth: undefined;
   SignUp: undefined;
-  Main: undefined; // For the Tab Navigator
-  TabHome: { userId: string }; // Renamed Home in Tab.Navigator
+  Main: undefined;
+  TabHome: { userId: string };
   Profile: { userId: string };
   ChangePassword: undefined;
   DeleteScreen: undefined;
   Transactions: { userId: string };
-  Inbox: { userId: string }; // Add Inbox screen to the stack navigator
+  TransferScreen: { from_account_id: string; userId: string };
+  SendScreen: { from_account_id: string; userId: string };
+  BillScreen: { from_account_id: string; userId: string };
   PrivacyScreen: undefined;
 };
 
@@ -135,6 +138,7 @@ const AppNavigation: React.FC<{ user: any }> = ({ user }) => {
           component={BillScreen}
           options={{ title: "Pay Bills" }}
         />
+        
       </Stack.Navigator>
     </NavigationContainer>
   );
