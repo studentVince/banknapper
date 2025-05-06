@@ -1,5 +1,6 @@
-import React from "react";
-import { View, Text, StyleSheet, ScrollView, Button } from "react-native";
+import React from 'react';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { Button } from 'react-native-elements';
 
 const PrivacyScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   return (
@@ -25,9 +26,12 @@ const PrivacyScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           you have any questions, please contact us.
         </Text>
       </ScrollView>
-      <View style={styles.buttonContainer}>
-        <Button title="Back to Profile" onPress={() => navigation.goBack()} />
-      </View>
+      <Button
+        title="Back to Profile"
+        onPress={() => navigation.goBack()}
+        buttonStyle={styles.button}
+        containerStyle={styles.buttonContainer}
+      />
     </View>
   );
 };
@@ -35,28 +39,34 @@ const PrivacyScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: '#f1f6fc',
     padding: 20,
   },
   header: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#333333",
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#007aff',
     marginBottom: 20,
-    textAlign: "center",
+    textAlign: 'center',
   },
   scrollContainer: {
-    paddingBottom: 20,
+    paddingBottom: 30,
   },
   text: {
     fontSize: 16,
-    color: "#555555",
+    color: '#333',
     marginBottom: 15,
-    lineHeight: 22,
+    lineHeight: 24,
   },
   buttonContainer: {
     marginTop: 20,
-    alignItems: "center",
+    alignSelf: 'center',
+    width: '60%',
+  },
+  button: {
+    backgroundColor: '#007aff',
+    borderRadius: 8,
+    paddingVertical: 12,
   },
 });
 

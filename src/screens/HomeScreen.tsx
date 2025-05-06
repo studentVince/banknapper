@@ -4,11 +4,13 @@ import {
   View,
   Alert,
   Text,
+  TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
-import { Button } from 'react-native-elements';
 import { supabase } from '../config/supabase';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamlist } from '../navigation/AppNavigation';
+import { Ionicons } from '@expo/vector-icons';
 
 type HomeScreenRouteProp = RouteProp<RootStackParamlist, 'TabHome'>;
 
@@ -18,15 +20,14 @@ type Props = {
 };
 
 const HomeScreen: React.FC<Props> = ({ route, navigation }) => {
-  const userId = route?.params?.userId || null; // Get userId from route params
-  const [balance, setBalance] = useState<number | null>(null); // State to store the user's balance
-  const [loading, setLoading] = useState(false); // State to manage loading
+  const userId = route?.params?.userId || null;
+  const [balance, setBalance] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  // Fetch the user's balance from the `Accounts` table
   useEffect(() => {
     if (!userId) {
       Alert.alert('Error', 'Invalid user ID. Please log in again.');
-      navigation.navigate('Auth'); // Redirect to the Auth screen
+      navigation.navigate('Auth');
       return;
     }
 
@@ -43,7 +44,7 @@ const HomeScreen: React.FC<Props> = ({ route, navigation }) => {
           console.error('Error fetching balance:', error);
           Alert.alert('Error', 'Failed to fetch balance.');
         } else {
-          setBalance(data?.balance || 0); // Set balance or default to 0
+          setBalance(data?.balance || 0);
         }
       } catch (error) {
         console.error('Unexpected error:', error);
@@ -56,38 +57,46 @@ const HomeScreen: React.FC<Props> = ({ route, navigation }) => {
     fetchBalance();
   }, [userId, navigation]);
 
+  const ActionButton = ({ title, icon, onPress }: { title: string; icon: any; onPress: () => void }) => (
+    <TouchableOpacity style={styles.actionButton} onPress={onPress}>
+      <Ionicons name={icon} size={28} color="#007aff" />
+      <Text style={styles.actionText}>{title}</Text>
+    </TouchableOpacity>
+  );
+
   return (
     <View style={styles.container}>
-      <View style={styles.balanceContainer}>
-        <Text style={styles.balanceText}>
-          {loading ? 'Loading...' : `Balance: $${balance?.toFixed(2)}`}
-        </Text>
-        <Button
-          title="Cash In"
+      <Text style={styles.header}>My Wallet</Text>
+      <View style={styles.balanceCard}>
+        <Text style={styles.balanceLabel}>Available Balance</Text>
+        {loading ? (
+          <ActivityIndicator size="small" color="#007aff" />
+        ) : (
+          <Text style={styles.balanceAmount}>₱{balance?.toFixed(2)}</Text>
+        )}
+        <TouchableOpacity
+          style={styles.cashInButton}
           onPress={() => navigation.navigate('CashIn', { userId })}
-          buttonStyle={styles.cashInButton}
-          titleStyle={styles.cashInButtonText}
-        />
+        >
+          <Text style={styles.cashInText}>+ Cash In</Text>
+        </TouchableOpacity>
       </View>
 
-      <View style={styles.buttonRow}>
-        <Button
-          title="Transfer"
-          onPress={() => navigation.navigate('TransferScreen', { userId })}
-          buttonStyle={styles.squareButton}
-          titleStyle={styles.buttonText}
-        />
-        <Button
+      <View style={styles.actionsContainer}>
+        <ActionButton
           title="Send"
+          icon="send"
           onPress={() => navigation.navigate('SendScreen', { userId })}
-          buttonStyle={styles.squareButton}
-          titleStyle={styles.buttonText}
         />
-        <Button
+        <ActionButton
+          title="Transfer"
+          icon="swap-horizontal"
+          onPress={() => navigation.navigate('TransferScreen', { userId })}
+        />
+        <ActionButton
           title="Pay Bills"
+          icon="document-text"
           onPress={() => navigation.navigate('BillScreen', { userId })}
-          buttonStyle={styles.squareButton}
-          titleStyle={styles.buttonText}
         />
       </View>
     </View>
@@ -97,47 +106,66 @@ const HomeScreen: React.FC<Props> = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 10,
+    backgroundColor: '#f4f6fc',
+    padding: 20,
   },
-  balanceContainer: {
-    flexDirection: 'row', // Align balance and button horizontally
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 20,
-    paddingHorizontal: 10,
-  },
-  balanceText: {
-    fontSize: 24,
-    fontWeight: 'bold',
+  header: {
+    fontSize: 22,
+    fontWeight: '600',
     color: '#333',
+    marginBottom: 10,
+  },
+  balanceCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 10,
+    elevation: 3,
+    alignItems: 'center',
+    marginBottom: 30,
+  },
+  balanceLabel: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 6,
+  },
+  balanceAmount: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#007aff',
   },
   cashInButton: {
-    backgroundColor: '#28a745', // Green color for the Cash In button
+    marginTop: 15,
+    backgroundColor: '#007aff',
+    paddingVertical: 8,
     paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 5,
+    borderRadius: 20,
   },
-  cashInButtonText: {
-    fontSize: 14,
+  cashInText: {
     color: '#fff',
+    fontWeight: '600',
   },
-  buttonRow: {
+  actionsContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 30,
-    paddingHorizontal: 10,
+    justifyContent: 'space-around',
   },
-  squareButton: {
-    width: 100, // Set a fixed width for square buttons
-    height: 100, // Set a fixed height for square buttons
-    backgroundColor: '#007bff',
-    justifyContent: 'center',
+  actionButton: {
     alignItems: 'center',
+    justifyContent: 'center',
+    width: 90,
+    height: 90,
+    backgroundColor: '#e6f0ff',
+    borderRadius: 50,
   },
-  buttonText: {
-    fontSize: 14,
+  actionText: {
+    marginTop: 6,
+    fontSize: 12,
+    color: '#007aff',
+    fontWeight: '500',
     textAlign: 'center',
-    color: '#fff',
   },
 });
 
