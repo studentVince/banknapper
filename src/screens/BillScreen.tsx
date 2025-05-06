@@ -1,10 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, StyleSheet, Alert, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  FlatList,
+  StyleSheet,
+  Alert,
+  TouchableOpacity,
+} from 'react-native';
 import { Button, Icon } from 'react-native-elements';
 import { supabase } from '../config/supabase';
 
 const BillScreen = ({ route }: { route: any }) => {
-  const { from_account_id, userId } = route.params; // Get the sender's account ID and userId from route params
+  const { from_account_id, userId } = route.params;
+
   interface Bill {
     id: number;
     bill_type: string;
@@ -14,7 +22,7 @@ const BillScreen = ({ route }: { route: any }) => {
     paid_at?: string;
   }
 
-  const [selectedBill, setSelectedBill] = useState<Bill | null>(null); // Store the selected bill
+  const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
   const [loading, setLoading] = useState(false);
   const [bills, setBills] = useState<Bill[]>([]);
 
@@ -25,7 +33,7 @@ const BillScreen = ({ route }: { route: any }) => {
           .from('bills')
           .select('*')
           .eq('user_id', userId)
-          .eq('is_paid', false) // Fetch only unpaid bills
+          .eq('is_paid', false)
           .order('due_date', { ascending: true });
 
         if (error) {
@@ -49,11 +57,9 @@ const BillScreen = ({ route }: { route: any }) => {
     }
 
     const amountToPay = selectedBill.amount;
-
     setLoading(true);
 
     try {
-      // Fetch sender's account balance
       const { data: senderAccount, error: senderError } = await supabase
         .from('Accounts')
         .select('balance')
@@ -72,19 +78,17 @@ const BillScreen = ({ route }: { route: any }) => {
         return;
       }
 
-      // Deduct the amount from the sender's account
       const { error: deductError } = await supabase
         .from('Accounts')
         .update({ balance: senderAccount.balance - amountToPay })
         .eq('account_id', from_account_id);
 
       if (deductError) {
-        Alert.alert('Error', 'Failed to deduct amount from account.');
+        Alert.alert('Error', 'Failed to deduct amount.');
         setLoading(false);
         return;
       }
 
-      // Record the transaction in the Transactions table
       const { error: transactionError } = await supabase
         .from('Transactions')
         .insert([
@@ -97,92 +101,98 @@ const BillScreen = ({ route }: { route: any }) => {
         ]);
 
       if (transactionError) {
-        Alert.alert('Error', 'Failed to record the transaction.');
+        Alert.alert('Error', 'Failed to record transaction.');
         setLoading(false);
         return;
       }
 
-      // Mark the bill as paid in the Bills table
       const { error: updateBillError } = await supabase
         .from('Bills')
-        .update({ is_paid: true,
+        .update({
+          is_paid: true,
           paid_at: new Date().toISOString(),
-         })
+        })
         .eq('id', selectedBill.id);
 
       if (updateBillError) {
-        Alert.alert('Error', 'Failed to update the bill status.');
+        Alert.alert('Error', 'Failed to update bill status.');
         setLoading(false);
         return;
       }
 
       const { error: notificationError } = await supabase
-      .from('Notifications')
-      .insert([
-        {
-          user_id: userId,
-          message: `You have successfully paid your ${selectedBill.bill_type} bill of $${amountToPay.toFixed(
-            2
-          )} on ${new Date().toLocaleString()}.`,
-          created_at: new Date().toISOString(),
-          type: 'bill_payment',
-          is_read: false,
-        },
-      ]);
+        .from('Notifications')
+        .insert([
+          {
+            user_id: userId,
+            message: `You paid your ${selectedBill.bill_type} bill of $${amountToPay.toFixed(
+              2
+            )} on ${new Date().toLocaleString()}.`,
+            created_at: new Date().toISOString(),
+            type: 'bill_payment',
+            is_read: false,
+          },
+        ]);
 
-    if (notificationError) {
-      Alert.alert('Error', 'Failed to record the notification.');
-      setLoading(false);
-      return;
-    }
+      if (notificationError) {
+        Alert.alert('Error', 'Failed to notify user.');
+        setLoading(false);
+        return;
+      }
 
-      Alert.alert('Success', `Your ${selectedBill.bill_type} bill has been paid successfully!`);
-      setSelectedBill(null); // Reset the selected bill
-      setBills((prevBills) => prevBills.filter((bill) => bill.id !== selectedBill.id)); // Remove the paid bill from the list
+      Alert.alert(
+        'Success',
+        `Your ${selectedBill.bill_type} bill was paid successfully!`
+      );
+      setBills((prev) => prev.filter((b) => b.id !== selectedBill.id));
+      setSelectedBill(null);
     } catch (error) {
-      console.error('Unexpected error:', error);
+      console.error('Error:', error);
       Alert.alert('Error', 'An unexpected error occurred.');
     } finally {
       setLoading(false);
     }
   };
 
-  const renderBillItem = ({ item }: { item: any }) => (
+  const renderBillItem = ({ item }: { item: Bill }) => (
     <TouchableOpacity
       style={[
         styles.billItem,
-        selectedBill?.id === item.id ? styles.selectedBillItem : null,
+        selectedBill?.id === item.id && styles.selectedBillItem,
       ]}
       onPress={() => setSelectedBill(item)}
     >
       <Icon
-        name={item.bill_type === 'Electricity' ? 'bolt' : 'water'}
-        type="font-awesome-5"
-        color={item.bill_type === 'Electricity' ? '#f39c12' : '#3498db'}
+        name={item.bill_type === 'Electricity' ? 'bolt' : 'tint'}
+        type="font-awesome"
+        color={item.bill_type === 'Electricity' ? '#f1c40f' : '#3498db'}
         size={24}
       />
       <View style={styles.billDetails}>
         <Text style={styles.billType}>{item.bill_type}</Text>
-        <Text style={styles.billAmount}>Amount: ${item.amount.toFixed(2)}</Text>
-        <Text style={styles.billDueDate}>Due Date: {item.due_date}</Text>
-        {item.is_paid && item.paid_at && (
-          <Text style={styles.billPaidAt}>Paid At: {new Date(item.paid_at).toLocaleString()}</Text>
-        )}
+        <Text style={styles.billAmount}>₱{item.amount.toFixed(2)}</Text>
+        <Text style={styles.billDueDate}>Due: {item.due_date}</Text>
       </View>
     </TouchableOpacity>
   );
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Pay Bills</Text>
+      <Text style={styles.title}>My Bills</Text>
       <FlatList
         data={bills}
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderBillItem}
-        ListEmptyComponent={<Text style={styles.noBills}>No unpaid bills available.</Text>}
+        ListEmptyComponent={
+          <Text style={styles.noBills}>🎉 No unpaid bills!</Text>
+        }
       />
       <Button
-        title={selectedBill ? `Pay ${selectedBill.bill_type} Bill` : 'Select a Bill to Pay'}
+        title={
+          selectedBill
+            ? `Pay ₱${selectedBill.amount.toFixed(2)} - ${selectedBill.bill_type}`
+            : 'Select a bill to pay'
+        }
         onPress={handlePayBill}
         loading={loading}
         disabled={!selectedBill}
@@ -195,12 +205,13 @@ const BillScreen = ({ route }: { route: any }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#f1f6fc',
     padding: 20,
-    backgroundColor: '#fff',
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 26,
+    fontWeight: '700',
+    color: '#007aff',
     marginBottom: 20,
     textAlign: 'center',
   },
@@ -208,40 +219,47 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
+    marginBottom: 10,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
   },
   selectedBillItem: {
-    backgroundColor: '#e6f7ff',
+    backgroundColor: '#dff0ff',
+    borderWidth: 1,
+    borderColor: '#007aff',
   },
   billDetails: {
     marginLeft: 15,
   },
   billType: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '600',
+    color: '#333',
   },
   billAmount: {
     fontSize: 16,
-    color: '#333',
+    color: '#007aff',
+    marginTop: 2,
   },
   billDueDate: {
     fontSize: 14,
-    color: '#888',
+    color: '#999',
+    marginTop: 2,
   },
   noBills: {
     fontSize: 16,
     color: '#888',
     textAlign: 'center',
-    marginTop: 20,
+    marginVertical: 30,
   },
-  billPaidAt: {
-  fontSize: 14,
-  color: '#28a745', // Green color for paid bills
-  marginTop: 5,
-},
   button: {
-    backgroundColor: '#007bff',
+    backgroundColor: '#007aff',
+    borderRadius: 10,
+    paddingVertical: 14,
     marginTop: 20,
   },
 });

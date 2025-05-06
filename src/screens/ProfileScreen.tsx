@@ -1,8 +1,17 @@
 import React, { useState, useEffect } from "react";
-import { View, StyleSheet, Alert, Button, Text } from "react-native";
+import {
+  View,
+  StyleSheet,
+  Alert,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  ActivityIndicator,
+} from "react-native";
 import { RouteProp } from "@react-navigation/native";
 import { RootStackParamlist } from "../navigation/AppNavigation";
 import { supabase } from "../config/supabase";
+import { Ionicons } from "@expo/vector-icons";
 
 type ProfileScreenRouteProp = RouteProp<RootStackParamlist, "Profile">;
 
@@ -12,19 +21,18 @@ type Props = {
 };
 
 const ProfileScreen: React.FC<Props> = ({ route, navigation }) => {
-  const userId = route?.params?.userId || "Unknown User"; // Fallback to "Unknown User" if userId is undefined
-  const [loading, setLoading] = useState(false); // State to manage loading
-  const [email, setEmail] = useState<string | null>(null); // State to store the user's email
-  const [username, setUsername] = useState<string | null>(null); // State to store the user's username
+  const userId = route?.params?.userId || "Unknown User";
+  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState<string | null>(null);
+  const [username, setUsername] = useState<string | null>(null);
 
-  // Fetch the user's email from the `Users` table
   useEffect(() => {
     if (!userId) {
       Alert.alert("Error", "Invalid user ID. Please log in again.");
       navigation.navigate("Auth");
       return;
     }
-    
+
     const fetchUserDetails = async () => {
       const { data, error } = await supabase
         .from("Users")
@@ -36,8 +44,8 @@ const ProfileScreen: React.FC<Props> = ({ route, navigation }) => {
         console.error("Error fetching user email:", error);
         Alert.alert("Error", "Failed to fetch user email.");
       } else {
-        setUsername(data?.username || "No username found");
-        setEmail(data?.email || "No email found");
+        setUsername(data?.username || "No username");
+        setEmail(data?.email || "No email");
       }
     };
 
@@ -51,84 +59,116 @@ const ProfileScreen: React.FC<Props> = ({ route, navigation }) => {
       Alert.alert("Error signing out");
     } else {
       Alert.alert("Signed out successfully!");
-      navigation.navigate("Auth"); // Navigate to the Auth screen
+      navigation.navigate("Auth");
     }
   }
 
+  const MenuItem = ({
+    title,
+    icon,
+    onPress,
+  }: {
+    title: string;
+    icon: any;
+    onPress: () => void;
+  }) => (
+    <TouchableOpacity style={styles.menuItem} onPress={onPress}>
+      <Ionicons name={icon} size={20} color="#007aff" />
+      <Text style={styles.menuText}>{title}</Text>
+      <Ionicons name="chevron-forward" size={18} color="#ccc" />
+    </TouchableOpacity>
+  );
+
   return (
-
-    <View style={styles.container}>
-      <View style={styles.headerContainer}>
-        <Text style={styles.header}>Welcome, {username}</Text>
-        <Text style={styles.email}>{email}</Text>
+    <ScrollView style={styles.container}>
+      <View style={styles.profileCard}>
+        <Ionicons name="person-circle" size={64} color="#007aff" />
+        <Text style={styles.username}>
+          {username || "Loading..."}
+        </Text>
+        <Text style={styles.email}>
+          {email || "Loading..."}
+        </Text>
       </View>
-    
-    <View style={styles.buttonContainer}>
 
-      
-        <Button
+      {loading && <ActivityIndicator color="#007aff" style={{ marginTop: 10 }} />}
+
+      <View style={styles.menuSection}>
+        <MenuItem
           title="Privacy Policy"
-          onPress={() => {
-            setLoading(true);
-            navigation.navigate("PrivacyScreen");
-          }}
+          icon="document-text-outline"
+          onPress={() => navigation.navigate("PrivacyScreen")}
         />
-        <Button
+        <MenuItem
           title="Change Password"
-          onPress={() => {
-            setLoading(true);
-            navigation.navigate("ChangePassword");
-          }}
+          icon="key-outline"
+          onPress={() => navigation.navigate("ChangePassword")}
         />
-        <Button
+        <MenuItem
           title="Delete Account"
-          onPress={() => {
-            setLoading(true);
-            navigation.navigate("DeleteScreen");
-          }}
+          icon="trash-outline"
+          onPress={() => navigation.navigate("DeleteScreen")}
         />
-        <Button
+        <MenuItem
           title="Log out"
+          icon="log-out-outline"
           onPress={() => {
             setLoading(true);
             signOut().finally(() => setLoading(false));
           }}
         />
-    </View>
-    </View>
+      </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5", // Light background for a clean look
+    backgroundColor: "#f4f6fc",
   },
-  header: {
-    fontSize: 36,
-    fontWeight: "bold",
-    color: "#333333",
-    marginBottom: 20,
+  profileCard: {
+    alignItems: "center",
+    backgroundColor: "#ffffff",
+    padding: 20,
+    borderRadius: 16,
+    margin: 20,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 10,
   },
-  text: {
-    fontSize: 18,
-    color: "#555555",
-    marginBottom: 30,
-  },
-  buttonContainer: {
-    width: "100%", // Ensure buttons take full width
+  username: {
+    fontSize: 22,
+    fontWeight: "600",
+    color: "#333",
     marginTop: 10,
   },
-  headerContainer: {
-    flex: 1,
-    justifyContent: "flex-start",
-    alignItems: "center",
-    marginTop: 20,
-    paddingHorizontal: 20,
-  },
   email: {
-    fontSize: 18,
-    color: "#555555",
+    fontSize: 16,
+    color: "#555",
+    marginTop: 4,
+  },
+  menuSection: {
+    marginHorizontal: 20,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+  },
+  menuText: {
+    flex: 1,
+    fontSize: 16,
+    marginLeft: 12,
+    color: "#333",
   },
 });
 

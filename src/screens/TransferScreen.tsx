@@ -1,10 +1,18 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+} from 'react-native';
 import { Input, Button } from 'react-native-elements';
 import { supabase } from '../config/supabase';
 
 const TransferScreen = ({ route, navigation }: { route: any; navigation: any }) => {
-  const { userId, from_account_id } = route.params; // Get userId and from_account_id from route params
+  const { userId, from_account_id } = route.params;
   const [bankName, setBankName] = useState('');
   const [bankAccountNumber, setBankAccountNumber] = useState('');
   const [amount, setAmount] = useState('');
@@ -12,20 +20,19 @@ const TransferScreen = ({ route, navigation }: { route: any; navigation: any }) 
 
   const handleBankTransfer = async () => {
     if (!bankName || !bankAccountNumber || !amount) {
-      Alert.alert('Error', 'Please fill in all fields.');
+      Alert.alert('Missing Info', 'Please fill in all fields.');
       return;
     }
 
     const amountToSend = parseFloat(amount);
     if (isNaN(amountToSend) || amountToSend <= 0) {
-      Alert.alert('Error', 'Please enter a valid amount.');
+      Alert.alert('Invalid Amount', 'Please enter a valid amount.');
       return;
     }
 
     setLoading(true);
 
     try {
-      // Fetch sender's account balance
       const { data: senderAccount, error: senderError } = await supabase
         .from('Accounts')
         .select('balance, account_id')
@@ -33,30 +40,30 @@ const TransferScreen = ({ route, navigation }: { route: any; navigation: any }) 
         .single();
 
       if (senderError || !senderAccount) {
-        Alert.alert('Error', 'Failed to fetch sender account details.');
+        Alert.alert('Error', 'Unable to retrieve your account balance.');
         setLoading(false);
         return;
       }
 
       if (senderAccount.balance < amountToSend) {
-        Alert.alert('Error', 'Insufficient balance.');
+        Alert.alert('Insufficient Funds', 'You do not have enough balance.');
         setLoading(false);
         return;
       }
 
-      // Deduct the amount from the sender's account
+      // Deduct amount
       const { error: deductError } = await supabase
         .from('Accounts')
         .update({ balance: senderAccount.balance - amountToSend })
         .eq('account_id', from_account_id);
 
       if (deductError) {
-        Alert.alert('Error', 'Failed to deduct amount from sender account.');
+        Alert.alert('Error', 'Failed to deduct the amount.');
         setLoading(false);
         return;
       }
 
-      // Record the transaction in the Transactions table
+      // Insert or update transfer record
       const { data: existingTransfer, error: fetchError } = await supabase
         .from('Banks')
         .select('*')
@@ -64,124 +71,123 @@ const TransferScreen = ({ route, navigation }: { route: any; navigation: any }) 
         .eq('bank_account_number', bankAccountNumber)
         .single();
 
-      if (fetchError) {
-        Alert.alert('Error', 'Failed to check existing bank details.');
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        Alert.alert('Error', 'Problem checking bank account.');
         setLoading(false);
         return;
       }
 
       if (existingTransfer) {
-        // Update the existing transfer record
-        const { error: updateError } = await supabase
+        await supabase
           .from('Banks')
           .update({ amount: existingTransfer.amount + amountToSend })
           .eq('id', existingTransfer.id);
-
-        if (updateError) {
-          Alert.alert('Error', 'Failed to update the transfer record.');
-          setLoading(false);
-          return;
-        }
       } else {
-        // Insert a new transfer record
-        const { error: insertError } = await supabase
-          .from('Banks')
-          .insert([
-            {
-              from_account_id: senderAccount.account_id,
-              bank_name: bankName,
-              bank_account_number: bankAccountNumber,
-              amount: amountToSend,
-              created_at: new Date().toISOString(),
-            },
-          ]);
-
-        if (insertError) {
-          Alert.alert('Error', 'Failed to record the transaction.');
-          setLoading(false);
-          return;
-        }
-      }
-
-      const currentDate = new Date().toLocaleString();
-
-      const { error: notificationError } = await supabase
-        .from('Notifications')
-        .insert([
+        await supabase.from('Banks').insert([
           {
-            user_id: userId,
-            message: `You have successfully transferred $${amountToSend.toFixed(2)} to ${bankName} (Account: ${bankAccountNumber}) on ${currentDate}.`,
+            from_account_id: senderAccount.account_id,
+            bank_name: bankName,
+            bank_account_number: bankAccountNumber,
+            amount: amountToSend,
             created_at: new Date().toISOString(),
-            type: 'bank_transfer',
-            is_read: false,
           },
         ]);
-
-      if (notificationError) {
-        Alert.alert('Error', 'Failed to record the notification.');
-        setLoading(false);
-        return;
       }
 
-      Alert.alert('Success', 'Money transferred successfully!', [
+      await supabase.from('Notifications').insert([
+        {
+          user_id: userId,
+          message: `Transferred ₱${amountToSend.toFixed(2)} to ${bankName} (Acct: ${bankAccountNumber}).`,
+          created_at: new Date().toISOString(),
+          type: 'bank_transfer',
+          is_read: false,
+        },
+      ]);
+
+      Alert.alert('Transfer Successful', 'Your money has been sent.', [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
     } catch (error) {
-      console.error('Unexpected error:', error);
-      Alert.alert('Error', 'An unexpected error occurred.');
+      console.error('Transfer error:', error);
+      Alert.alert('Unexpected Error', 'Something went wrong.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Transfer to Bank</Text>
-      <Input
-        label="Bank Name"
-        placeholder="Enter recipient's bank name"
-        value={bankName}
-        onChangeText={setBankName}
-      />
-      <Input
-        label="Bank Account Number"
-        placeholder="Enter recipient's bank account number"
-        value={bankAccountNumber}
-        onChangeText={setBankAccountNumber}
-        keyboardType="numeric"
-      />
-      <Input
-        label="Amount"
-        placeholder="Enter amount to transfer"
-        value={amount}
-        onChangeText={setAmount}
-        keyboardType="numeric"
-      />
-      <Button
-        title="Transfer"
-        onPress={handleBankTransfer}
-        loading={loading}
-        buttonStyle={styles.button}
-      />
-    </View>
+    <KeyboardAvoidingView
+      style={styles.wrapper}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <ScrollView contentContainerStyle={styles.container}>
+        <Text style={styles.title}>Bank Transfer</Text>
+
+        <Input
+          label="Bank Name"
+          placeholder="e.g. BPI, BDO, Metrobank"
+          value={bankName}
+          onChangeText={setBankName}
+          inputStyle={styles.input}
+          containerStyle={styles.inputContainer}
+        />
+        <Input
+          label="Bank Account Number"
+          placeholder="Enter account number"
+          value={bankAccountNumber}
+          onChangeText={setBankAccountNumber}
+          keyboardType="numeric"
+          inputStyle={styles.input}
+          containerStyle={styles.inputContainer}
+        />
+        <Input
+          label="Amount"
+          placeholder="₱0.00"
+          value={amount}
+          onChangeText={setAmount}
+          keyboardType="numeric"
+          inputStyle={styles.input}
+          containerStyle={styles.inputContainer}
+        />
+
+        <Button
+          title="Transfer Now"
+          onPress={handleBankTransfer}
+          loading={loading}
+          buttonStyle={styles.button}
+        />
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  wrapper: {
     flex: 1,
+    backgroundColor: '#f1f6fc',
+  },
+  container: {
     padding: 20,
     justifyContent: 'center',
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#007aff',
     textAlign: 'center',
+    marginBottom: 30,
+  },
+  input: {
+    fontSize: 16,
+    color: '#333',
+  },
+  inputContainer: {
+    marginBottom: 20,
   },
   button: {
-    backgroundColor: '#007bff',
-    marginTop: 20,
+    backgroundColor: '#007aff',
+    borderRadius: 8,
+    paddingVertical: 12,
   },
 });
 
