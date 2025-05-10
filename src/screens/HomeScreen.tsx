@@ -8,9 +8,10 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { supabase } from '../config/supabase';
-import { RouteProp } from '@react-navigation/native';
+import { RouteProp, useFocusEffect } from '@react-navigation/native';
 import { RootStackParamlist } from '../navigation/AppNavigation';
 import { Ionicons } from '@expo/vector-icons';
+
 
 type HomeScreenRouteProp = RouteProp<RootStackParamlist, 'TabHome'>;
 
@@ -23,39 +24,38 @@ const HomeScreen: React.FC<Props> = ({ route, navigation }) => {
   const userId = route?.params?.userId || null;
   const [balance, setBalance] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
+  const [accountId, setAccountId] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!userId) {
-      Alert.alert('Error', 'Invalid user ID. Please log in again.');
-      navigation.navigate('Auth');
-      return;
-    }
+  const fetchBalance = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('Accounts')
+        .select('balance')
+        .eq('user_id', userId)
+        .single();
 
-    const fetchBalance = async () => {
-      try {
-        setLoading(true);
-        const { data, error } = await supabase
-          .from('Accounts')
-          .select('balance')
-          .eq('user_id', userId)
-          .single();
-
-        if (error) {
-          console.error('Error fetching balance:', error);
-          Alert.alert('Error', 'Failed to fetch balance.');
-        } else {
-          setBalance(data?.balance || 0);
-        }
-      } catch (error) {
-        console.error('Unexpected error:', error);
-        Alert.alert('Error', 'An unexpected error occurred.');
-      } finally {
-        setLoading(false);
+      if (error) {
+        console.error('Error fetching balance:', error);
+        Alert.alert('Error', 'Failed to fetch balance.');
+      } else {
+        setBalance(data?.balance || 0);
       }
-    };
+    } catch (error) {
+      console.error('Unexpected error:', error);
+      Alert.alert('Error', 'An unexpected error occurred.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    fetchBalance();
-  }, [userId, navigation]);
+  useFocusEffect(
+    React.useCallback(() => {
+      if (userId) {
+        fetchBalance(); // Fetch balance whenever the screen comes into focus
+      }
+    }, [userId])
+  );
 
   const ActionButton = ({ title, icon, onPress }: { title: string; icon: any; onPress: () => void }) => (
     <TouchableOpacity style={styles.actionButton} onPress={onPress}>
@@ -83,6 +83,7 @@ const HomeScreen: React.FC<Props> = ({ route, navigation }) => {
       </View>
 
       <View style={styles.actionsContainer}>
+      <View style={styles.actionsRow}>
         <ActionButton
           title="Send"
           icon="send"
@@ -99,6 +100,15 @@ const HomeScreen: React.FC<Props> = ({ route, navigation }) => {
           onPress={() => navigation.navigate('BillScreen', { userId })}
         />
       </View>
+      </View>
+
+      <View style={styles.actionsRow}>
+        <ActionButton
+          title="Savings"
+          icon="wallet"
+          onPress={() => navigation.navigate('SavingScreen', { userId })}
+        />
+  </View>
     </View>
   );
 };
@@ -149,8 +159,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   actionsContainer: {
-    flexDirection: 'row',
+    flexDirection: 'column', // Allow multiple rows
     justifyContent: 'space-around',
+    alignItems: 'center',
   },
   actionButton: {
     alignItems: 'center',
@@ -166,6 +177,12 @@ const styles = StyleSheet.create({
     color: '#007aff',
     fontWeight: '500',
     textAlign: 'center',
+  },
+  actionsRow: {
+    flexDirection: 'row', // Arrange buttons in a row
+    justifyContent: 'space-around',
+    width: '100%',
+    marginBottom: 20, // Add spacing between rows
   },
 });
 

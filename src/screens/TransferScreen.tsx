@@ -85,7 +85,7 @@ const TransferScreen = ({ route, navigation }: { route: any; navigation: any }) 
       } else {
         await supabase.from('Banks').insert([
           {
-            from_account_id: senderAccount.account_id,
+            account_id: senderAccount.account_id,
             bank_name: bankName,
             bank_account_number: bankAccountNumber,
             amount: amountToSend,

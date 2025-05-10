@@ -20,9 +20,9 @@ const TransactionScreen = ({ route }: { route: any }) => {
       try {
         const { data, error } = await supabase
           .from('Notifications')
-          .select('*')
+          .select('notif_id, message, type, created_at') // Explicitly select notif_id
           .eq('user_id', userId)
-          .in('type', ['send_money', 'receive_money', 'bank_transfer'])
+          .in('type', ['send_money', 'receive_money', 'bank_transfer', 'cash_in', 'add_to_savings'])
           .order('created_at', { ascending: false });
 
         if (error) {
@@ -73,7 +73,7 @@ const TransactionScreen = ({ route }: { route: any }) => {
       ) : notifications.length > 0 ? (
         <FlatList
           data={notifications}
-          keyExtractor={(item) => item.id.toString()}
+          keyExtractor={(item) => item.notif_id?.toString() || item.created_at} // Use notif_id or fallback to created_at
           renderItem={renderNotification}
           contentContainerStyle={styles.listContent}
         />

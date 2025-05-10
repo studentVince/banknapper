@@ -81,7 +81,7 @@ export default function SignUpScreen({ navigation }: { navigation: any }) {
       // Insert into the `accounts` table
       const { error: accountError } = await supabase
         .from("Accounts")
-        .insert([{ user_id: userId, account_type: accountType, balance: balance }]);
+        .insert([{ user_id: userId, account_type: 'Checking', balance: balance }]);
   
       if (accountError) {
         Alert.alert("Error", accountError.message);
@@ -151,14 +151,6 @@ export default function SignUpScreen({ navigation }: { navigation: any }) {
           value={password}
           secureTextEntry={true}
           placeholder="Password"
-          autoCapitalize="none"
-        />
-        <Input
-          label="Account Type"
-          leftIcon={{ type: 'material', name: 'account-circle' }}
-          onChangeText={(text) => setAccountType(text)}
-          value={accountType}
-          placeholder="Enter account type"
           autoCapitalize="none"
         />
         <Input

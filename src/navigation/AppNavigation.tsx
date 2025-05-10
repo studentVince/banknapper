@@ -15,6 +15,7 @@ import TransferScreen from "../screens/TransferScreen"; // Import TransferScreen
 import SendScreen from "../screens/SendScreen";
 import BillScreen from "../screens/BillScreen";
 import CashIn from "../screens/CashIn";
+import SavingScreen from "../screens/SavingScreen";
 
 export type RootStackParamlist = {
   Auth: undefined;
@@ -29,14 +30,20 @@ export type RootStackParamlist = {
   SendScreen: { from_account_id: string; userId: string };
   BillScreen: { from_account_id: string; userId: string };
   PrivacyScreen: undefined;
+  CashIn: { from_account_id: string; userId: string };
+  SavingScreen: { userId: string; from_account_id: string };
 };
 
 const Stack = createStackNavigator<RootStackParamlist>();
 const Tab = createBottomTabNavigator();
 
+
 function TabNavigator({ user }: { user: any }) {
+  
+
   return (
     <Tab.Navigator
+    
       screenOptions={({ route }) => ({
         tabBarIcon: ({ color, size }) => {
           let iconName;
@@ -56,10 +63,11 @@ function TabNavigator({ user }: { user: any }) {
         headerShown: true,
       })}
     >
+
       <Tab.Screen
       name="TabHome"
       component={HomeScreen}
-      initialParams={{ userId: user?.id }} // Pass userId as initialParams
+      initialParams={{ userId: user?.id, from_account_id: user?.account_id }} // Pass userId as initialParams
       options={{
         title: "Home",
       }}
@@ -138,7 +146,16 @@ const AppNavigation: React.FC<{ user: any }> = ({ user }) => {
           component={BillScreen}
           options={{ title: "Pay Bills" }}
         />
-        
+        <Stack.Screen
+          name="CashIn"
+          component={CashIn}
+          options={{ title: "Cash In" }}
+        />
+        <Stack.Screen
+          name="SavingScreen" // Add SavingScreen here
+          component={SavingScreen}
+          options={{ title: "Savings" }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

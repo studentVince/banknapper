@@ -25,6 +25,7 @@ const BillScreen = ({ route }: { route: any }) => {
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
   const [loading, setLoading] = useState(false);
   const [bills, setBills] = useState<Bill[]>([]);
+  const [payFrom, setPayFrom] = useState<'account' | 'savings'>('account'); // State to toggle between account and savings
 
   useEffect(() => {
     const fetchBills = async () => {
@@ -60,27 +61,29 @@ const BillScreen = ({ route }: { route: any }) => {
     setLoading(true);
 
     try {
-      const { data: senderAccount, error: senderError } = await supabase
-        .from('Accounts')
+      const { data: sourceAccount, error: sourceError } = await supabase
+        .from(payFrom === 'account' ? 'Accounts' : 'Savings')
         .select('balance')
         .eq('account_id', from_account_id)
         .single();
 
-      if (senderError || !senderAccount) {
+      if (sourceError || !sourceAccount) {
         Alert.alert('Error', 'Failed to fetch account details.');
         setLoading(false);
         return;
       }
 
-      if (senderAccount.balance < amountToPay) {
+      if (sourceAccount.balance < amountToPay) {
         Alert.alert('Error', 'Insufficient balance.');
         setLoading(false);
         return;
       }
 
+
+      const newBalance = sourceAccount.balance - amountToPay;
       const { error: deductError } = await supabase
-        .from('Accounts')
-        .update({ balance: senderAccount.balance - amountToPay })
+        .from(payFrom === 'account' ? 'Accounts' : 'Savings')
+        .update({ balance: newBalance })
         .eq('account_id', from_account_id);
 
       if (deductError) {
@@ -125,9 +128,9 @@ const BillScreen = ({ route }: { route: any }) => {
         .insert([
           {
             user_id: userId,
-            message: `You paid your ${selectedBill.bill_type} bill of $${amountToPay.toFixed(
+            message: `You paid your ${selectedBill.bill_type} bill of ₱${amountToPay.toFixed(
               2
-            )} on ${new Date().toLocaleString()}.`,
+            )} from your ${payFrom} balance on ${new Date().toLocaleString()}.`,
             created_at: new Date().toISOString(),
             type: 'bill_payment',
             is_read: false,
