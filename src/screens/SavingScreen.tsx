@@ -60,7 +60,6 @@ const SavingScreen = ({ route, navigation }: { route: any; navigation: any }) =>
   }, [userId]);
 
   const handleAddToSavings = async () => {
-    console.log('handleAddToSavings called with amount:', amount);
   
     if (!amount) {
       Alert.alert('Missing Information', 'Please enter an amount.');
@@ -273,45 +272,38 @@ const SavingScreen = ({ route, navigation }: { route: any; navigation: any }) =>
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.container}>
-  <Text style={styles.title}>Savings</Text>
-  <Text style={styles.balance}>Savings Balance: ₱{savingsBalance?.toFixed(2) || '0.00'}</Text>
+        <Text style={styles.title}>Savings</Text>
+        <Text style={styles.balance}>Savings Balance: ₱{savingsBalance?.toFixed(2) || '0.00'}</Text>
 
-  <View style={styles.toggleContainer}>
-    <Button
-      title={actionType === 'add_to_savings' ? 'Add to Savings' : 'Cash In'}
-      onPress={() => {
-        console.log('Button pressed. Action type:', actionType);
-        if (actionType === 'add_to_savings') {
-          console.log('Calling handleAddToSavings...');
-          handleAddToSavings();
-        } else {
-          console.log('Calling handleCashIn...');
-          handleCashIn();
-        }
-      }}
-      loading={loading}
-    />
-    <Button
-      title="Cash In"
-      onPress={() => setActionType('cash_in')}
-      buttonStyle={[
-        styles.toggleButton,
-        actionType === 'cash_in' && styles.activeToggleButton,
-      ]}
-    />
-  </View>
+        <Input
+          label="Amount"
+          placeholder="₱0.00"
+          value={amount}
+          onChangeText={setAmount}
+          keyboardType="numeric"
+          inputStyle={styles.input}
+          containerStyle={styles.inputContainer}
+        />
 
-  <Input
-    label="Amount"
-    placeholder="₱0.00"
-    value={amount}
-    onChangeText={setAmount}
-    keyboardType="numeric"
-    inputStyle={styles.input}
-    containerStyle={styles.inputContainer}
-  />
-  
-</ScrollView>
+        <View style={styles.buttonContainer}>
+          <Button
+            title="Add to Savings"
+            onPress={() => {
+              handleAddToSavings();
+            }}
+            loading={loading}
+            buttonStyle={styles.button}
+          />
+          <Button
+            title="Cash In"
+            onPress={() => {
+              handleCashIn();
+            }}
+            loading={loading}
+            buttonStyle={styles.button}
+          />
+        </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 };
@@ -339,19 +331,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 20,
   },
-  toggleContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
-  toggleButton: {
-    flex: 1,
-    marginHorizontal: 5,
-    backgroundColor: '#e6f0ff',
-  },
-  activeToggleButton: {
-    backgroundColor: '#007aff',
-  },
   input: {
     fontSize: 16,
     color: '#333',
@@ -359,7 +338,14 @@ const styles = StyleSheet.create({
   inputContainer: {
     marginBottom: 20,
   },
+  buttonContainer: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  marginTop: 20,
+  },
   button: {
+    flex: 1,
+    marginHorizontal: 5,
     backgroundColor: '#007aff',
     borderRadius: 8,
     paddingVertical: 12,

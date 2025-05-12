@@ -79,12 +79,27 @@ export default function SignUpScreen({ navigation }: { navigation: any }) {
       }
   
       // Insert into the `accounts` table
-      const { error: accountError } = await supabase
+      const { error: accountError, data: accountData } = await supabase
         .from("Accounts")
-        .insert([{ user_id: userId, account_type: 'Checking', balance: balance }]);
-  
-      if (accountError) {
-        Alert.alert("Error", accountError.message);
+        .insert([{ user_id: userId, account_type: "Checking", balance: balance }])
+        .select("account_id") // Fetch the account_id after insertion
+        .single();
+
+      if (accountError || !accountData) {
+        Alert.alert("Error", accountError?.message || "Failed to create account.");
+        setLoading(false);
+        return;
+      }
+
+      const { account_id } = accountData; // Extract the account_id
+
+// Insert into the `Savings` table
+      const { error: savingsError } = await supabase
+        .from("Savings")
+        .insert([{ account_id: account_id, balance: 0 }]); // Initialize savings balance to 0
+
+      if (savingsError) {
+        Alert.alert("Error", savingsError.message || "Failed to create savings account.");
         setLoading(false);
         return;
       }

@@ -39,11 +39,12 @@ const CashInScreen = ({ route, navigation }: { route: any; navigation: any }) =>
     setLoading(true);
 
     try {
+
       // Fetch the current balance of the account
       const { data: accountData, error: accountError } = await supabase
         .from('Accounts')
         .select('balance')
-        .eq('id', from_account_id)
+        .eq('account_id', from_account_id)
         .single();
 
       if (accountError || !accountData) {
@@ -52,10 +53,11 @@ const CashInScreen = ({ route, navigation }: { route: any; navigation: any }) =>
         return;
       }
 
+
       const { data: bankData, error: bankError } = await supabase
         .from('Banks')
         .select('balance')
-        .eq('id', from_account_id)
+        .eq('account_id', from_account_id)
         .single();
 
       if (bankError || !bankData) {
@@ -71,7 +73,7 @@ const CashInScreen = ({ route, navigation }: { route: any; navigation: any }) =>
       const { error: accountUpdateError } = await supabase
         .from('Accounts')
         .update({ balance: newBalance })
-        .eq('id', from_account_id);
+        .eq('account_id', from_account_id);
 
       if (accountUpdateError) {
         Alert.alert('Error', 'Failed to update account balance.');
@@ -81,7 +83,7 @@ const CashInScreen = ({ route, navigation }: { route: any; navigation: any }) =>
       const { error: bankUpdateError } = await supabase
         .from('Banks')
         .update({ balance: newBankBalance })
-        .eq('id', from_account_id);
+        .eq('account_id', from_account_id);
 
       if (bankUpdateError) {
         Alert.alert('Error', 'Failed to update bannk balance.');

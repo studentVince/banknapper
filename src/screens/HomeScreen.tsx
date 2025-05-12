@@ -20,8 +20,8 @@ type Props = {
   navigation: any;
 };
 
-const HomeScreen: React.FC<Props> = ({ route, navigation }) => {
-  const userId = route?.params?.userId || null;
+const HomeScreen = ({ navigation, route }: { navigation: any; route: any }) => {
+  const { userId, from_account_id } = route.params;
   const [balance, setBalance] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [accountId, setAccountId] = useState<string | null>(null);
@@ -76,7 +76,8 @@ const HomeScreen: React.FC<Props> = ({ route, navigation }) => {
         )}
         <TouchableOpacity
           style={styles.cashInButton}
-          onPress={() => navigation.navigate('CashIn', { userId })}
+          onPress={() => navigation.navigate('CashIn', { userId: userId,
+            from_account_id: from_account_id, })}
         >
           <Text style={styles.cashInText}>+ Cash In</Text>
         </TouchableOpacity>
@@ -87,17 +88,20 @@ const HomeScreen: React.FC<Props> = ({ route, navigation }) => {
         <ActionButton
           title="Send"
           icon="send"
-          onPress={() => navigation.navigate('SendScreen', { userId })}
+          onPress={() => navigation.navigate('SendScreen', { userId: userId,
+            from_account_id: from_account_id, })}
         />
         <ActionButton
           title="Transfer"
           icon="swap-horizontal"
-          onPress={() => navigation.navigate('TransferScreen', { userId })}
+          onPress={() => navigation.navigate('TransferScreen', { userId: userId,
+            from_account_id: from_account_id,})}
         />
         <ActionButton
           title="Pay Bills"
           icon="document-text"
-          onPress={() => navigation.navigate('BillScreen', { userId })}
+          onPress={() => navigation.navigate('BillScreen', { userId: userId,
+            from_account_id: from_account_id, })}
         />
       </View>
       </View>
@@ -106,7 +110,8 @@ const HomeScreen: React.FC<Props> = ({ route, navigation }) => {
         <ActionButton
           title="Savings"
           icon="wallet"
-          onPress={() => navigation.navigate('SavingScreen', { userId })}
+          onPress={() => navigation.navigate('SavingScreen', {userId: userId,
+            from_account_id: from_account_id,})}
         />
   </View>
     </View>

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
@@ -16,6 +16,7 @@ import SendScreen from "../screens/SendScreen";
 import BillScreen from "../screens/BillScreen";
 import CashIn from "../screens/CashIn";
 import SavingScreen from "../screens/SavingScreen";
+import { supabase } from "../config/supabase";
 
 export type RootStackParamlist = {
   Auth: undefined;
@@ -39,7 +40,36 @@ const Tab = createBottomTabNavigator();
 
 
 function TabNavigator({ user }: { user: any }) {
-  
+  const [accountId, setAccountId] = useState<string | null>(null);
+
+   useEffect(() => {
+    const fetchAccountId = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("Accounts")
+          .select("account_id")
+          .eq("user_id", user?.id)
+          .single();
+
+        if (error) {
+          console.error("Error fetching account_id:", error);
+        } else {
+          setAccountId(data?.account_id || null);
+        }
+      } catch (error) {
+        console.error("Unexpected error fetching account_id:", error);
+      }
+    };
+
+    if (user?.id) {
+      fetchAccountId();
+    }
+  }, [user?.id]);
+
+  if (!accountId) {
+    // Optionally, show a loading screen while fetching the account_id
+    return null;
+  }
 
   return (
     <Tab.Navigator
@@ -67,7 +97,7 @@ function TabNavigator({ user }: { user: any }) {
       <Tab.Screen
       name="TabHome"
       component={HomeScreen}
-      initialParams={{ userId: user?.id, from_account_id: user?.account_id }} // Pass userId as initialParams
+      initialParams={{ userId: user?.id, from_account_id: accountId }} // Pass userId as initialParams
       options={{
         title: "Home",
       }}
@@ -75,7 +105,7 @@ function TabNavigator({ user }: { user: any }) {
       <Tab.Screen
         name="Transactions"
         component={TransactionScreen}
-        initialParams={{ userId: user?.id }}
+        initialParams={{ userId: user?.id, from_account_id: accountId }}
         options={{
           title: "Transactions",
         }}

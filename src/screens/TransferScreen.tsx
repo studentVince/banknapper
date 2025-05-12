@@ -19,101 +19,109 @@ const TransferScreen = ({ route, navigation }: { route: any; navigation: any }) 
   const [loading, setLoading] = useState(false);
 
   const handleBankTransfer = async () => {
-    if (!bankName || !bankAccountNumber || !amount) {
-      Alert.alert('Missing Info', 'Please fill in all fields.');
+  if (!bankName || !bankAccountNumber || !amount) {
+    Alert.alert('Missing Info', 'Please fill in all fields.');
+    return;
+  }
+  console.log("from_account_id:", from_account_id);
+
+  // Validate bank account number length (e.g., must be 10 digits)
+  if (bankAccountNumber.length !== 10) {
+    Alert.alert('Invalid Bank Account Number', 'Bank account number must be exactly 10 digits.');
+    return;
+  }
+
+  const amountToSend = parseFloat(amount);
+  if (isNaN(amountToSend) || amountToSend <= 0) {
+    Alert.alert('Invalid Amount', 'Please enter a valid amount.');
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    const { data: senderAccount, error: senderError } = await supabase
+      .from('Accounts')
+      .select('balance, account_id')
+      .eq('account_id', from_account_id)
+      .single();
+
+    if (senderError || !senderAccount) {
+      Alert.alert('Error', 'Unable to retrieve your account balance.');
+      setLoading(false);
       return;
     }
 
-    const amountToSend = parseFloat(amount);
-    if (isNaN(amountToSend) || amountToSend <= 0) {
-      Alert.alert('Invalid Amount', 'Please enter a valid amount.');
+    if (senderAccount.balance < amountToSend) {
+      Alert.alert('Insufficient Funds', 'You do not have enough balance.');
+      setLoading(false);
       return;
     }
 
-    setLoading(true);
+    // Deduct amount
+    const { error: deductError } = await supabase
+      .from('Accounts')
+      .update({ balance: senderAccount.balance - amountToSend })
+      .eq('account_id', from_account_id);
 
-    try {
-      const { data: senderAccount, error: senderError } = await supabase
-        .from('Accounts')
-        .select('balance, account_id')
-        .eq('account_id', from_account_id)
-        .single();
+    if (deductError) {
+      Alert.alert('Error', 'Failed to deduct the amount.');
+      setLoading(false);
+      return;
+    }
 
-      if (senderError || !senderAccount) {
-        Alert.alert('Error', 'Unable to retrieve your account balance.');
-        setLoading(false);
-        return;
-      }
+    // Insert or update transfer record
+    const { data: existingTransfer, error: fetchError } = await supabase
+      .from('Banks')
+      .select('*')
+      .eq('account_id', from_account_id)
+      .eq('bank_name', bankName)
+      .eq('bank_account_number', bankAccountNumber)
+      .single();
 
-      if (senderAccount.balance < amountToSend) {
-        Alert.alert('Insufficient Funds', 'You do not have enough balance.');
-        setLoading(false);
-        return;
-      }
+    if (fetchError && fetchError.code !== 'PGRST116') {
+      Alert.alert('Error', 'Problem checking bank account.');
+      setLoading(false);
+      return;
+    }
 
-      // Deduct amount
-      const { error: deductError } = await supabase
-        .from('Accounts')
-        .update({ balance: senderAccount.balance - amountToSend })
-        .eq('account_id', from_account_id);
-
-      if (deductError) {
-        Alert.alert('Error', 'Failed to deduct the amount.');
-        setLoading(false);
-        return;
-      }
-
-      // Insert or update transfer record
-      const { data: existingTransfer, error: fetchError } = await supabase
+    if (existingTransfer) {
+      await supabase
         .from('Banks')
-        .select('*')
-        .eq('bank_name', bankName)
-        .eq('bank_account_number', bankAccountNumber)
-        .single();
-
-      if (fetchError && fetchError.code !== 'PGRST116') {
-        Alert.alert('Error', 'Problem checking bank account.');
-        setLoading(false);
-        return;
-      }
-
-      if (existingTransfer) {
-        await supabase
-          .from('Banks')
-          .update({ amount: existingTransfer.amount + amountToSend })
-          .eq('id', existingTransfer.id);
-      } else {
-        await supabase.from('Banks').insert([
-          {
-            account_id: senderAccount.account_id,
-            bank_name: bankName,
-            bank_account_number: bankAccountNumber,
-            amount: amountToSend,
-            created_at: new Date().toISOString(),
-          },
-        ]);
-      }
-
-      await supabase.from('Notifications').insert([
+        .update({ balance: existingTransfer.amount + amountToSend })
+        .eq('account_id', existingTransfer.account_id);
+    } else {
+      await supabase.from('Banks').insert([
         {
-          user_id: userId,
-          message: `Transferred ₱${amountToSend.toFixed(2)} to ${bankName} (Acct: ${bankAccountNumber}).`,
+          account_id: senderAccount.account_id,
+          bank_name: bankName,
+          bank_account_number: bankAccountNumber,
+          balance: amountToSend,
           created_at: new Date().toISOString(),
-          type: 'bank_transfer',
-          is_read: false,
         },
       ]);
-
-      Alert.alert('Transfer Successful', 'Your money has been sent.', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
-    } catch (error) {
-      console.error('Transfer error:', error);
-      Alert.alert('Unexpected Error', 'Something went wrong.');
-    } finally {
-      setLoading(false);
     }
-  };
+
+    await supabase.from('Notifications').insert([
+      {
+        user_id: userId,
+        message: `Transferred ₱${amountToSend.toFixed(2)} to ${bankName} (Acct: ${bankAccountNumber}).`,
+        created_at: new Date().toISOString(),
+        type: 'bank_transfer',
+        is_read: false,
+      },
+    ]);
+
+    Alert.alert('Transfer Successful', 'Your money has been sent.', [
+      { text: 'OK', onPress: () => navigation.goBack() },
+    ]);
+  } catch (error) {
+    console.error('Transfer error:', error);
+    Alert.alert('Unexpected Error', 'Something went wrong.');
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <KeyboardAvoidingView
