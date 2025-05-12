@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -9,37 +9,42 @@ import {
 } from 'react-native';
 import { supabase } from '../config/supabase';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native'; // Import useFocusEffect
 
 const TransactionScreen = ({ route }: { route: any }) => {
   const { userId } = route.params;
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('Notifications')
-          .select('notif_id, message, type, created_at') // Explicitly select notif_id
-          .eq('user_id', userId)
-          .in('type', ['send_money', 'receive_money', 'bank_transfer', 'cash_in', 'add_to_savings'])
-          .order('created_at', { ascending: false });
+  const fetchNotifications = async () => {
+    try {
+      setLoading(true); // Show loading indicator while fetching
+      const { data, error } = await supabase
+        .from('Notifications')
+        .select('notif_id, message, type, created_at') // Explicitly select notif_id
+        .eq('user_id', userId)
+        .in('type', ['send_money', 'receive_money', 'bank_transfer', 'cash_in', 'add_to_savings'])
+        .order('created_at', { ascending: false });
 
-        if (error) {
-          console.error('Error fetching notifications:', error);
-          return;
-        }
-
-        setNotifications(data || []);
-      } catch (error) {
-        console.error('Unexpected error:', error);
-      } finally {
-        setLoading(false);
+      if (error) {
+        console.error('Error fetching notifications:', error);
+        return;
       }
-    };
 
-    fetchNotifications();
-  }, [userId]);
+      setNotifications(data || []);
+    } catch (error) {
+      console.error('Unexpected error:', error);
+    } finally {
+      setLoading(false); // Hide loading indicator after fetching
+    }
+  };
+
+  // Use useFocusEffect to fetch notifications when the screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchNotifications();
+    }, [userId])
+  );
 
   const renderNotification = ({ item }: { item: any }) => (
     <View style={styles.notificationCard}>

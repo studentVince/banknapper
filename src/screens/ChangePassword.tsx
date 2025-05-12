@@ -17,39 +17,56 @@ export default function ChangePassword({ navigation }: { navigation: any }) {
   const [loading, setLoading] = useState(false);
 
   async function handleChangePassword() {
-    if (newPassword !== confirmPassword) {
-      Alert.alert('Error', 'New password and confirmation do not match.');
-      return;
-    }
+  if (newPassword !== confirmPassword) {
+    Alert.alert('Error', 'New password and confirmation do not match.');
+    return;
+  }
 
-    setLoading(true);
+  setLoading(true);
 
-    // Re-authenticate the user with the current password
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: (await supabase.auth.getUser()).data?.user?.email || '',
-      password: currentPassword,
-    });
+  try {
+    // Fetch the user's session to get the current user
+    const {
+      data: { user },
+      error: sessionError,
+    } = await supabase.auth.getUser();
 
-    if (signInError) {
-      Alert.alert('Error', 'Current password is incorrect.');
+    if (sessionError || !user) {
+      Alert.alert('Error', 'Unable to fetch user session. Please log in again.');
       setLoading(false);
       return;
     }
 
-    // Update the user's password
-    const { error: updateError } = await supabase.auth.updateUser({
+    // Update the password in Supabase's authentication system
+    const { error: authError } = await supabase.auth.updateUser({
       password: newPassword,
     });
 
+    if (authError) {
+      Alert.alert('Error', authError.message || 'Failed to update password in authentication system.');
+      setLoading(false);
+      return;
+    }
+
+    // Update the password in the Users table
+    const { error: updateError } = await supabase
+      .from('Users')
+      .update({ password: newPassword }) // Update the password in your Users table
+      .eq('user_id', user.id);
+
     if (updateError) {
-      Alert.alert('Error', updateError.message);
+      Alert.alert('Error', updateError.message || 'Failed to update password in the database.');
     } else {
       Alert.alert('Success', 'Your password has been updated.');
       navigation.navigate('Profile'); // Navigate back to the Profile page
     }
-
+  } catch (error) {
+    console.error('Unexpected error:', error);
+    Alert.alert('Error', 'An unexpected error occurred.');
+  } finally {
     setLoading(false);
   }
+}
 
   return (
     <KeyboardAvoidingView
